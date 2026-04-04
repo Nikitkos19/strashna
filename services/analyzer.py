@@ -154,6 +154,17 @@ NO_SPLIT_MARKERS = (
 GENERIC_PHRASES_BY_MC = {
     111: {"демонтаж", "разборка"},
 }
+DEMOLITION_CONTEXT_MARKERS = (
+    "демонтаж",
+    "снятие",
+    "снять",
+    "разборка",
+    "разбор",
+    "снос",
+    "очистка",
+)
+DEMOLITION_MC_ID = 111
+FLOOR_TILE_MARKERS = ("пвх", "spc", "кварцвинил", "винилов")
 
 
 def normalize_text(text):
@@ -306,15 +317,20 @@ def find_detected_microcategories(description, microcategories):
     return detected
 
 
-def should_suppress_detection(microcategory, source_mc_id):
-    return False
-
-
 def apply_detection_overrides(detected_microcategories, source_mc_id):
     return [
         microcategory
         for microcategory in detected_microcategories
-        if not should_suppress_detection(microcategory, source_mc_id)
+        if not should_suppress_detection(
+            microcategory,
+            detected_microcategories,
+            source_mc_id,
+        )
+        and not is_demolition_only_detection(
+            microcategory,
+            detected_microcategories,
+            source_mc_id,
+        )
     ]
 
 
@@ -338,6 +354,60 @@ def find_evidence_sentences(matched_phrases, sentences):
     return evidence
 
 
+def is_demolition_context(sentence):
+    normalized_sentence = normalize_text(sentence)
+    return any(marker in normalized_sentence for marker in DEMOLITION_CONTEXT_MARKERS)
+
+
+def is_demolition_only_detection(microcategory, detected_microcategories, source_mc_id):
+    if microcategory["mcId"] == DEMOLITION_MC_ID:
+        return False
+
+    if source_mc_id != DEMOLITION_MC_ID:
+        return False
+
+    evidence_sentences = microcategory["evidenceSentences"]
+    if not evidence_sentences:
+        return False
+
+    if not all(is_demolition_context(sentence) for sentence in evidence_sentences):
+        return False
+
+    return all(len(phrase_to_stems(phrase)) <= 2 for phrase in microcategory["matchedPhrases"])
+
+
+def has_detected_mc(detected_microcategories, mc_id):
+    return any(item["mcId"] == mc_id for item in detected_microcategories)
+
+
+def has_marker(sentences, markers):
+    return any(any(marker in sentence for marker in markers) for sentence in sentences)
+
+
+def should_suppress_detection(microcategory, detected_microcategories, source_mc_id):
+    matched_phrases = {
+        normalize_text(phrase) for phrase in microcategory["matchedPhrases"]
+    }
+    evidence_sentences = microcategory["evidenceSentences"]
+    mc_id = microcategory["mcId"]
+
+    if mc_id == 103 and has_detected_mc(detected_microcategories, 104):
+        if matched_phrases and matched_phrases.issubset({"подсветка потолка"}):
+            return True
+
+    if mc_id == 105 and has_detected_mc(detected_microcategories, 109):
+        if evidence_sentences and has_marker(evidence_sentences, FLOOR_TILE_MARKERS):
+            if not has_marker(evidence_sentences, ("керамогранит", "кафель", "мозаик")):
+                return True
+
+    if mc_id == 109 and has_detected_mc(detected_microcategories, 105):
+        if evidence_sentences and has_marker(evidence_sentences, ("под плитк",)):
+            if not has_marker(evidence_sentences, FLOOR_TILE_MARKERS):
+                return True
+
+    return False
+
+
 def is_complex_root_category(microcategory):
     title = microcategory["mcTitle"].lower()
     return "под ключ" in title or "комплекс" in title
@@ -359,9 +429,6 @@ def score_split_candidate(microcategory):
         if has_bundled_marker and not has_standalone_marker:
             bundled_score += 2
 
-    if len(microcategory["matchedPhrases"]) >= 2:
-        standalone_score += 1
-
     return standalone_score, bundled_score
 
 
@@ -374,7 +441,7 @@ def choose_split_candidates(detected_microcategories):
 
         standalone_score, bundled_score = score_split_candidate(microcategory)
 
-        if standalone_score > bundled_score:
+        if standalone_score > 0 and standalone_score > bundled_score:
             split_candidates.append(
                 {
                     **microcategory,
