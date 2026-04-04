@@ -1,58 +1,43 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ объявлений</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<main class="page">
+    <section class="panel">
+        <div class="notice">
+            Вставьте текст объявления, выберите исходную микрокатегорию и получите список услуг,
+            для которых можно предложить отдельные черновики.
+        </div>
+        <h1>Анализ объявления</h1>
+        <p class="lead">
+            Базовая страница для будущего анализа услуг и генерации дополнительных черновиков.
+        </p>
 
-{% block content %}
-    <!-- Форма поиска -->
-    <div class="search-form">
-        <form method="GET" action="/">
-            <div class="form-group">
-                <input type="text" 
-                       name="search" 
-                       placeholder="Поиск по объявлениям..." 
-                       value="{{ search_query }}">
-                
-                <select name="category">
-                    {% for cat in categories %}
-                        <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>
-                            {{ cat }}
-                        </option>
-                    {% endfor %}
-                </select>
-                
-                <button type="submit">Найти</button>
-                
-                {% if search_query or category_filter %}
-                    <a href="/" style="text-decoration: none;">
-                        <button type="button" style="background: #6c757d;">Сбросить</button>
-                    </a>
-                {% endif %}
-            </div>
+        <form method="post" class="form">
+            <label for="source_mc_id">Исходная микрокатегория</label>
+            <select id="source_mc_id" name="source_mc_id" required>
+                <option value="" disabled selected>Выберите микрокатегорию</option>
+                {% for microcategory in microcategories %}
+                    <option value="{{ microcategory.mcId }}">{{ microcategory.mcTitle }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="description">Текст объявления</label>
+            <textarea
+                id="description"
+                name="description"
+                placeholder="Введите описание объявления..."
+                required
+            ></textarea>
+
+            <button type="submit">Показать результат</button>
         </form>
-    </div>
-
-    <!-- Результаты -->
-    {% if ads %}
-        <div class="ads-grid">
-            {% for ad in ads %}
-                <div class="ad-card">
-                    <div class="ad-actions">
-                        <a href="/edit/{{ ad.id }}" class="edit-btn">✏️</a>
-                        <a href="/delete/{{ ad.id }}" class="delete-btn" onclick="return confirm('Удалить объявление?')">🗑️</a>
-                    </div>
-                    <div class="ad-category">{{ ad.category }}</div>
-                    <div class="ad-title">{{ ad.title }}</div>
-                    <div class="ad-price">{{ "{:,}".format(ad.price).replace(',', ' ') }} ₽</div>
-                    <div class="ad-description">{{ ad.description[:120] }}{% if ad.description|length > 120 %}...{% endif %}</div>
-                    <div style="font-size: 12px; color: #adb5bd; margin-top: 10px;">
-                        {{ ad.created_at[:10].replace('-', '.')[::-1].replace('.', '-', 1)[::-1] if ad.created_at else 'Дата не указана' }}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="no-results">
-            <h3>😕 Ничего не найдено</h3>
-            <p>Попробуйте изменить поисковый запрос или категорию</p>
-            <a href="/add" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #ff5e3a; color: white; text-decoration: none; border-radius: 8px;">➕ Добавить объявление</a>
-        </div>
-    {% endif %}
-{% endblock %}
+    </section>
+</main>
+</body>
+</html>

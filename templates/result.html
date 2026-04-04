@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результат анализа</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<main class="page">
+    <section class="panel">
+        <div class="notice">
+            Анализ завершён. Ниже показаны найденные микрокатегории и предложенные черновики.
+        </div>
+        {% if result.savedRunId %}
+            <p class="save-note">Результат сохранён в базу. Запись №{{ result.savedRunId }}.</p>
+        {% endif %}
+        <h1>Результат анализа</h1>
+
+        <div class="section">
+            <h2>Описание объявления</h2>
+            <p class="text-block">{{ result.description or "Описание пока не передано." }}</p>
+        </div>
+
+        <div class="section">
+            <h2>Найденные микрокатегории</h2>
+            <div class="chips">
+                {% for title in result.detectedMcTitles %}
+                    <span class="chip">{{ title }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Нужно ли создавать черновики</h2>
+            <p class="status {{ 'status-true' if result.shouldSplit else 'status-false' }}">
+                {{ "Да" if result.shouldSplit else "Нет" }}
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>Предложенные черновики</h2>
+            {% if result.drafts %}
+                {% for draft in result.drafts %}
+                    <article class="card">
+                        <h3>{{ draft.mcTitle }}</h3>
+                        <p>{{ draft.text }}</p>
+                    </article>
+                {% endfor %}
+            {% else %}
+                <p class="text-block">Дополнительные черновики не требуются.</p>
+            {% endif %}
+        </div>
+
+        <a class="link-back" href="/">Вернуться назад</a>
+    </section>
+</main>
+</body>
+</html>
