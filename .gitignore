@@ -2,3 +2,7 @@
 venv/
 
 .idea/
+__pycache__/
+*.py[cod]
+data/app.db
+*.db
