@@ -9,32 +9,19 @@
 <body>
 <main class="page">
     <section class="panel">
-        <div class="notice">
-            Вставьте текст объявления, выберите исходную микрокатегорию и получите список услуг,
-            для которых можно предложить отдельные черновики.
-        </div>
         <h1>Анализ объявления</h1>
         <p class="lead">
-            Базовая страница для будущего анализа услуг и генерации дополнительных черновиков.
+            Вставьте JSON запроса и получите результат анализа по новому формату входных данных.
         </p>
 
         <form method="post" class="form">
-            <label for="source_mc_id">Исходная микрокатегория</label>
-            <select id="source_mc_id" name="source_mc_id" required>
-                <option value="" disabled selected>Выберите микрокатегорию</option>
-                {% for microcategory in microcategories %}
-                    <option value="{{ microcategory.mcId }}">{{ microcategory.mcTitle }}</option>
-                {% endfor %}
-            </select>
-
-            <label for="description">Текст объявления</label>
+            <label for="payload">JSON запроса</label>
             <textarea
-                id="description"
-                name="description"
-                placeholder="Введите описание объявления..."
+                id="payload"
+                name="payload"
+                placeholder='{"itemId": 5001, "mcId": 101, "mcTitle": "Ремонт квартир и домов под ключ", "description": "Текст объявления"}'
                 required
             ></textarea>
-
             <button type="submit">Показать результат</button>
         </form>
     </section>

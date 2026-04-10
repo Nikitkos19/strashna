@@ -165,6 +165,62 @@ DEMOLITION_CONTEXT_MARKERS = (
 )
 DEMOLITION_MC_ID = 111
 FLOOR_TILE_MARKERS = ("пвх", "spc", "кварцвинил", "винилов")
+RECALL_ALIASES_BY_MC = {
+    102: (
+        "водоснабжение",
+        "канализация",
+        "водоразводка",
+        "сантехнических работ",
+        "сантехнические",
+        "сантехработы",
+        "санузел под ключ",
+        "ремонт санузлов",
+        "ремонт ванной",
+        "ванная комната",
+    ),
+    104: (
+        "натяжной потолок",
+        "натяжной потолки",
+        "установка потолков",
+        "монтаж потолков",
+        "потолки",
+        "потолок",
+        "потолочные работы",
+        "потолочный багет",
+        "потолок с освещением",
+    ),
+    105: (
+        "кафель",
+        "кафельные работы",
+        "кафельщик",
+        "наклейка плитки",
+        "керамическая плитка",
+        "мозаика",
+        "декоративный камень",
+        "керамогранит",
+    ),
+    108: (
+        "шпаклевка",
+        "шпатлевка",
+        "шпаклёвка",
+        "шпатлёвка",
+        "штукатурка",
+        "отделка стен",
+        "откосы",
+    ),
+    109: (
+        "ламинат",
+        "линолеум",
+        "линолиум",
+        "паркет",
+        "деревянных полов",
+        "настил ламината",
+        "ковролин",
+        "полы",
+        "напольное покрытие",
+        "плинтус",
+    ),
+}
 
 
 def normalize_text(text):
@@ -238,8 +294,10 @@ def find_matched_phrases(microcategory, description_index):
         return find_turnkey_matches(microcategory, description_index)
 
     matched_phrases = []
+    candidate_phrases = list(microcategory["keyPhrases"])
+    candidate_phrases.extend(RECALL_ALIASES_BY_MC.get(microcategory["mcId"], ()))
 
-    for phrase in microcategory["keyPhrases"]:
+    for phrase in candidate_phrases:
         normalized_phrase = normalize_text(phrase)
         exact_match = (
             bool(normalized_phrase)
@@ -473,7 +531,7 @@ def filter_out_source_microcategory(detected_microcategories, source_mc_id):
     ]
 
 
-def analyze_ad(description, microcategories, source_mc_id=None):
+def analyze_ad(description, microcategories, source_mc_id=None, should_split_predictor=None):
     detected_microcategories = find_detected_microcategories(description, microcategories)
     detected_microcategories = apply_detection_overrides(
         detected_microcategories,
@@ -484,15 +542,37 @@ def analyze_ad(description, microcategories, source_mc_id=None):
         source_mc_id,
     )
     split_candidates = choose_split_candidates(additional_microcategories)
+
+    if should_split_predictor is not None:
+        should_split = bool(additional_microcategories) and should_split_predictor.predict(
+            description
+        )
+    else:
+        should_split = bool(split_candidates)
+
     if has_hard_no_split_signal(description, source_mc_id):
+        should_split = False
+
+    if should_split:
+        split_candidates = additional_microcategories
+    else:
         split_candidates = []
+
     drafts = build_drafts(split_candidates)
 
     return {
         "description": description,
         "sourceMcId": source_mc_id,
-        "detectedMcIds": [item["mcId"] for item in detected_microcategories],
-        "detectedMcTitles": [item["mcTitle"] for item in detected_microcategories],
+        "detectedMcIds": [item["mcId"] for item in additional_microcategories],
+        "detectedMcTitles": [item["mcTitle"] for item in additional_microcategories],
         "shouldSplit": bool(split_candidates),
         "drafts": drafts,
+    }
+
+
+def build_public_response(result):
+    return {
+        "detectedMcIds": result["detectedMcIds"],
+        "shouldSplit": result["shouldSplit"],
+        "drafts": result["drafts"],
     }
